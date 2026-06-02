@@ -36,19 +36,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'rep_id, event_type, and event_date required' }, { status: 400 })
   }
 
-  // Qualified appt validation
-  if (event_type === 'qualified_appt') {
-    if (!power_bill_image_path) {
-      return Response.json({ error: 'Power bill image required for qualified appts' }, { status: 400 })
-    }
-    const apptDate = new Date(event_date)
-    const now = new Date()
-    const diffHours = Math.abs(now.getTime() - apptDate.getTime()) / 36e5
-    if (diffHours > 48) {
-      return Response.json({ error: 'Qualified appt must be within 48 hours' }, { status: 400 })
-    }
-  }
-
   let points: number
   try { points = getPoints(event_type) } catch {
     return Response.json({ error: 'Invalid event type' }, { status: 400 })

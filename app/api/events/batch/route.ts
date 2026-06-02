@@ -37,10 +37,8 @@ export async function POST(req: NextRequest) {
     for (const ev of events) {
       if (!ev.count || ev.count < 1) continue
       const pts = getPoints(ev.type)
-      // For qualified_appt, validate image present
-      const imgPath = ev.type === 'qualified_appt' ? (power_bill_image_path ?? null) : null
       for (let i = 0; i < ev.count; i++) {
-        insert.run(rep_id, ev.type, event_date, pts, imgPath, auth.userId)
+        insert.run(rep_id, ev.type, event_date, pts, null, auth.userId)
       }
     }
   })

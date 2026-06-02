@@ -39,9 +39,6 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [billPath, setBillPath] = useState<string | null>(null)
-  const [billFile, setBillFile] = useState<string>('')
 
   const points = calcPoints(counts)
   const hasAny = Object.values(counts).some(v => v > 0)
@@ -56,19 +53,6 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
     setSaved(false)
   }
 
-  async function handleBillUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    const data = await res.json()
-    setUploading(false)
-    if (res.ok) setBillPath(data.path)
-    setBillFile(e.target.value)
-  }
-
   async function save() {
     setSaving(true)
     const events = Object.entries(counts)
@@ -78,7 +62,7 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
     await fetch('/api/events/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rep_id: rep.id, event_date: date, events, power_bill_image_path: billPath }),
+      body: JSON.stringify({ rep_id: rep.id, event_date: date, events }),
     })
     setSaving(false)
     setSaved(true)
@@ -87,12 +71,8 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
 
   function reset() {
     setCounts({ ...EMPTY_COUNTS })
-    setBillPath(null)
-    setBillFile('')
     setSaved(false)
   }
-
-  const needsBill = counts.qualified_appt > 0
 
   return (
     <div className={`bg-white rounded-2xl border transition-all ${open ? 'border-blue-300 shadow-md' : 'border-gray-200'}`}>
@@ -144,22 +124,6 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
             ))}
           </div>
 
-          {/* Power bill upload — only when Q.Appt > 0 */}
-          {needsBill && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-              <p className="text-xs font-medium text-yellow-800 mb-2">⚡ Power bill required for Qualified Appt</p>
-              <input
-                type="file"
-                accept="image/*"
-                value={billFile}
-                onChange={handleBillUpload}
-                className="text-xs text-gray-700 w-full"
-              />
-              {uploading && <p className="text-xs text-yellow-700 mt-1">Uploading...</p>}
-              {billPath && <p className="text-xs text-green-700 mt-1">✓ Bill uploaded</p>}
-            </div>
-          )}
-
           {/* Points summary */}
           {hasAny && (
             <div className="flex flex-wrap gap-2 text-xs text-gray-600">
@@ -175,7 +139,7 @@ function RepCard({ rep, date }: { rep: Rep; date: string }) {
           <div className="flex gap-2">
             <button
               onClick={save}
-              disabled={saving || !hasAny || (needsBill && !billPath)}
+              disabled={saving || !hasAny}
               className="flex-1 bg-blue-600 text-white text-sm font-semibold py-2 rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
               {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Day'}
