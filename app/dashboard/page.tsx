@@ -18,6 +18,14 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
   }
 }
 
+const TEAM_PALETTE = [
+  { solid: '#2563EB', light: '#EFF6FF' },
+  { solid: '#DC2626', light: '#FEF2F2' },
+  { solid: '#059669', light: '#ECFDF5' },
+  { solid: '#7C3AED', light: '#F5F3FF' },
+  { solid: '#D97706', light: '#FFFBEB' },
+]
+
 export default async function RepDashboard({
   searchParams,
 }: {
@@ -39,6 +47,8 @@ export default async function RepDashboard({
       : `AND e.event_date >= '${weekStart}' AND e.event_date <= '${weekEnd}'`
 
   const db = getDb()
+
+  // Full leaderboard — no team filter, reps see everything
   const rows = db.prepare(`
     SELECT
       u.id, u.name,
@@ -54,12 +64,27 @@ export default async function RepDashboard({
     LEFT JOIN events e ON e.rep_id = u.id ${dateFilter}
     LEFT JOIN teams t ON t.id = u.team_id
     WHERE u.role = 'rep'
-      AND (? IS NULL OR t.id = ?)
     GROUP BY u.id
     ORDER BY total_points DESC
-  `).all(auth.teamId, auth.teamId) as any[]
+  `).all() as any[]
 
   const myRow = rows.find(r => r.id === auth.userId)
+
+  // Group by team, sorted by team total desc, reps within each team sorted desc
+  const teamMap = new Map<string, { team_name: string; rows: any[]; total: number }>()
+  for (const row of rows) {
+    const key = row.team_name ?? 'No Team'
+    if (!teamMap.has(key)) teamMap.set(key, { team_name: key, rows: [], total: 0 })
+    const team = teamMap.get(key)!
+    team.rows.push(row)
+    team.total += row.total_points
+  }
+  // Sort reps within each team highest → lowest
+  for (const team of teamMap.values()) {
+    team.rows.sort((a, b) => b.total_points - a.total_points)
+  }
+  const teams = Array.from(teamMap.values()).sort((a, b) => b.total - a.total)
+  const maxTotal = Math.max(...teams.map(t => t.total), 1)
 
   const viewLabel =
     view === 'daily'
@@ -100,11 +125,62 @@ export default async function RepDashboard({
         <span className="text-sm text-gray-500">{viewLabel}</span>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">
-          {myRow?.team_name ? `Team: ${myRow.team_name}` : 'Team Leaderboard'}
-        </h2>
-        <Leaderboard rows={rows} showTeam={false} />
+      {/* Team score cards */}
+      {teams.length > 0 && (
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${Math.min(teams.length, 3)}, minmax(0, 1fr))` }}
+        >
+          {teams.map((team, i) => {
+            const palette = TEAM_PALETTE[i % TEAM_PALETTE.length]
+            const isLeading = i === 0 && teams.length > 1
+            const barPct = Math.max(4, Math.round((team.total / maxTotal) * 100))
+            return (
+              <div key={team.team_name} style={{
+                borderRadius: '1rem', overflow: 'hidden',
+                border: isLeading ? `2px solid ${palette.solid}` : '2px solid #E5E7EB',
+                boxShadow: isLeading ? `0 0 0 4px ${palette.solid}33` : '0 1px 3px rgba(0,0,0,0.08)',
+              }}>
+                <div style={{ background: palette.solid, padding: '14px 20px' }}>
+                  {isLeading && (
+                    <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      🏆 Leading
+                    </div>
+                  )}
+                  <div style={{ color: '#fff', fontWeight: 700, fontSize: '18px' }}>{team.team_name}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', marginTop: '2px' }}>{team.rows.length} rep{team.rows.length !== 1 ? 's' : ''}</div>
+                </div>
+                <div style={{ background: palette.light, padding: '20px 20px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
+                    <span style={{ fontSize: '64px', fontWeight: 900, lineHeight: 1, color: palette.solid }}>
+                      {team.total > 0 ? '+' : ''}{team.total}
+                    </span>
+                    <span style={{ fontSize: '16px', fontWeight: 600, color: palette.solid, paddingBottom: '8px', opacity: 0.7 }}>pts</span>
+                  </div>
+                  <div style={{ marginTop: '12px', height: '6px', background: '#E5E7EB', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${barPct}%`, background: palette.solid, borderRadius: '9999px' }} />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Per-team rep breakdowns — sorted highest to lowest */}
+      <div className="space-y-6">
+        {teams.map((team, i) => {
+          const palette = TEAM_PALETTE[i % TEAM_PALETTE.length]
+          return (
+            <div key={team.team_name}>
+              <div className="flex items-center gap-2 mb-2">
+                <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: palette.solid, flexShrink: 0 }} />
+                <h2 className="text-base font-semibold text-gray-800">{team.team_name}</h2>
+              </div>
+              <Leaderboard rows={team.rows} showTeam={false} />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

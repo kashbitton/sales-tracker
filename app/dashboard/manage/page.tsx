@@ -76,6 +76,10 @@ export default async function ManagerDashboard({
     team.rows.push(row)
     team.total += row.total_points
   }
+  // Sort reps within each team highest → lowest
+  for (const team of teamMap.values()) {
+    team.rows.sort((a, b) => b.total_points - a.total_points)
+  }
   const teams = Array.from(teamMap.values()).sort((a, b) => b.total - a.total)
   const maxTotal = Math.max(...teams.map(t => t.total), 1)
 
