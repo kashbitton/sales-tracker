@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() || 'jpg'
   const filename = `${randomUUID()}-${Date.now()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
-  await writeFile(path.join(process.cwd(), 'public', 'uploads', filename), buffer)
+  const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'public')
+  await writeFile(path.join(dataDir, 'uploads', filename), buffer)
 
   return Response.json({ path: `/uploads/${filename}` })
 }

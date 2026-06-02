@@ -2,8 +2,10 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 
-const DB_PATH = path.join(process.cwd(), 'sales.db')
-const UPLOADS_PATH = path.join(process.cwd(), 'public', 'uploads')
+// On Railway, use /data (persistent volume). Locally, use project root.
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd()
+const DB_PATH = path.join(DATA_DIR, 'sales.db')
+const UPLOADS_PATH = path.join(DATA_DIR, 'uploads')
 
 // Ensure uploads dir exists
 fs.mkdirSync(UPLOADS_PATH, { recursive: true })
