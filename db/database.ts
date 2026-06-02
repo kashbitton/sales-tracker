@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3'
+import bcrypt from 'bcryptjs'
 import path from 'path'
 import fs from 'fs'
 
@@ -54,6 +55,14 @@ function initTables(db: Database.Database) {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `)
+
+  const existing = db.prepare("SELECT id FROM users WHERE username = 'admin'").get()
+  if (!existing) {
+    const hash = bcrypt.hashSync('admin123', 12)
+    db.prepare("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)").run(
+      'Manager', 'admin', hash, 'manager'
+    )
+  }
 }
 
 export default getDb

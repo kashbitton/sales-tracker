@@ -5,8 +5,9 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.join(__dirname, '..', 'sales.db')
-const UPLOADS = path.join(__dirname, '..', 'public', 'uploads')
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, '..')
+const DB_PATH = path.join(DATA_DIR, 'sales.db')
+const UPLOADS = path.join(DATA_DIR, 'uploads')
 fs.mkdirSync(UPLOADS, { recursive: true })
 
 const db = new Database(DB_PATH)

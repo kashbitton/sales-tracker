@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
-const SECRET = process.env.JWT_SECRET!
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set')
+const SECRET = process.env.JWT_SECRET
 
 export interface TokenPayload {
   userId: number
