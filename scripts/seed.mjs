@@ -5,9 +5,15 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.join(__dirname, '..', 'sales.db')
-const UPLOADS = path.join(__dirname, '..', 'public', 'uploads')
+
+// Match the same logic as db/database.ts
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, '..')
+const DB_PATH = path.join(DATA_DIR, 'sales.db')
+const UPLOADS = path.join(DATA_DIR, 'uploads')
+
 fs.mkdirSync(UPLOADS, { recursive: true })
+
+console.log('Using database at:', DB_PATH)
 
 const db = new Database(DB_PATH)
 db.pragma('journal_mode = WAL')
@@ -49,8 +55,5 @@ if (existing) {
   db.prepare("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)").run(
     'Manager', 'admin', hash, 'manager'
   )
-  console.log('Created manager account:')
-  console.log('  Username: admin')
-  console.log('  Password: admin123')
-  console.log('  ⚠️  Change the password after first login!')
+  console.log('Created manager account: admin / admin123')
 }
